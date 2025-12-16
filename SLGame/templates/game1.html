@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수어 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: white;
+            font-size: 2.5em;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            animation: bounce 1s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .container {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #videoFeed {
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 5px solid #667eea;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .question-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 40px;
+            border-radius: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            min-width: 300px;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .result-box {
+            padding: 20px 35px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            min-width: 250px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .result-correct {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(86, 171, 47, 0.4);
+            animation: correctBounce 0.5s ease;
+        }
+
+        .result-wrong {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(235, 51, 73, 0.4);
+            animation: shake 0.5s ease;
+        }
+
+        .result-waiting {
+            background: #f0f0f0;
+            color: #999;
+        }
+
+        @keyframes correctBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .emoji {
+            font-size: 40px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>실시간 수어 인식 게임</h1>
+    <div class="container">
+        <div class="video-container">
+            <img id="videoFeed" src="/video_feed" width="640" height="480">
+            <div class="question-box">
+                <span class="emoji">🎯</span>
+                <span id="questionText">문제를 불러오는 중...</span>
+            </div>
+            <div class="result-box result-waiting" id="gameResult">
+                <span class="emoji">⏳</span>
+                <span>결과 대기 중...</span>
+            </div>
+            <button class="btn" onclick="fetchQuestion()">🎲 새 문제 받기</button>
+        </div>
+    </div>
+
+    <script>
+        let lastResult = null;
+
+        function fetchQuestion() {
+            fetch('/get_question')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('questionText').innerText = data.question;
+                    const resultBox = document.getElementById('gameResult');
+                    resultBox.className = 'result-box result-waiting';
+                    resultBox.innerHTML = '<span class="emoji">⏳</span><span>결과 대기 중...</span>';
+                    lastResult = null;
+                })
+                .catch(error => console.error('문제 가져오기 오류:', error));
+        }
+
+        function checkGameStatus() {
+            fetch('/get_question')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('questionText').innerText = data.question;
+                });
+
+            setInterval(() => {
+                fetch('/get_game_info')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.game_result && data.game_result !== lastResult) {
+                            lastResult = data.game_result;
+                            const resultBox = document.getElementById('gameResult');
+                            
+                            if (data.game_result === "정답입니다!") {
+                                resultBox.className = 'result-box result-correct';
+                                resultBox.innerHTML = '<span class="emoji">🎉</span><span>정답입니다!</span>';
+                                
+                                // 3초 후 자동으로 다음 문제
+                                setTimeout(() => {
+                                    fetchQuestion();
+                                }, 3000);
+                            } else if (data.game_result === "틀렸습니다!") {
+                                resultBox.className = 'result-box result-wrong';
+                                resultBox.innerHTML = '<span class="emoji">😢</span><span>틀렸습니다!</span>';
+                            }
+                        }
+                    })
+                    .catch(error => console.error('게임 상태 가져오기 오류:', error));
+            }, 1000);
+        }
+
+        window.onload = checkGameStatus;
+    </script>
+</body>
+</html>
